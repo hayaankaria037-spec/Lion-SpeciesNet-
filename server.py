@@ -17,11 +17,25 @@ MAX_BYTES = 8 * 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 24_000_000
 
 
+def checkpoint(stage):
+    stats = {}
+    for name in ('memory.current', 'memory.max', 'memory.events'):
+        path = Path('/sys/fs/cgroup') / name
+        if path.exists():
+            stats[name] = path.read_text().strip()
+    print('SpeciesNet startup:', stage, stats, flush=True)
+
+
 def load_model():
+    checkpoint('before torch import')
     import torch
+    checkpoint('after torch import')
     torch.set_num_threads(max(1, min(8, int(os.getenv('SPECIESNET_CPU_THREADS', '2')))))
     from speciesnet import SpeciesNet
-    return SpeciesNet(MODEL, geofence=False, multiprocessing=False)
+    checkpoint('after speciesnet import')
+    model = SpeciesNet(MODEL, geofence=False, multiprocessing=False)
+    checkpoint('model loaded')
+    return model
 
 
 @asynccontextmanager
